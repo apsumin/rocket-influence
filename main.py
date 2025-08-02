@@ -35,11 +35,3 @@ async def read_item(q: str, t: str, neural: bool = True):
     }
 
 
-# Mount the static files directory once the search endpoint is defined
-if os.path.exists(STATIC_DIR):
-    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True))
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
