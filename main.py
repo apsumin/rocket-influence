@@ -13,7 +13,7 @@ CODE_DIR = os.path.dirname(__file__)
 ROOT_DIR = os.path.dirname(CODE_DIR)
 
 
-S__TATIC_DIR = os.path.join(ROOT_DIR, "static")
+STATIC_DIR = os.path.join(ROOT_DIR, "static")
 
 
 app = FastAPI()
@@ -35,3 +35,7 @@ async def read_item(q: str, t: str, neural: bool = True):
     }
 
 
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
