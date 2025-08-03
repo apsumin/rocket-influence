@@ -1,10 +1,12 @@
-FROM python:3.9-slim-buster
+ENV PYTHONUNBUFFERED True
 
-WORKDIR /app
+ENV APP_HOME /app
+WORKDIR $APP_HOME
+COPY . ./
 
-COPY requirements.txt .
+ENV PORT 1234
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# As an example here we're running the web service with one worker on uvicorn.
+MD exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --workers 1
