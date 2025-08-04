@@ -2,18 +2,14 @@ FROM python:3.9-slim
 
 ENV PYTHONUNBUFFERED True
 ENV PORT 8080
+ENV APP_HOME /app
 
-
-COPY requirements.txt ./
+CMD pwd
+CMD ls -lrt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-ENV APP_HOME /app
-WORKDIR $APP_HOME
 COPY . $APP_HOME/.
-
-
-
-
+WORKDIR $APP_HOME
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "$PORT"]
