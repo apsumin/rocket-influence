@@ -1,0 +1,31 @@
+instagram_content
+instagram_posts
+transcrib_insta
+
+ SELECT json_agg(
+        json_build_object(
+            'table_name', c.table_name,
+            'column_name', c.column_name,
+            'data_type', c.data_type,
+            'is_nullable', c.is_nullable,
+            'column_default', c.column_default
+        )
+    ) AS table_structure
+    FROM information_schema.columns c
+    WHERE c.table_schema = 'public' -- or your specific schema
+    AND c.table_name = 'instagram_content';
+
+
+
+[{"table_name":"instagram_content","column_name":"id","data_type":"uuid","is_nullable":"NO","column_default":"gen_random_uuid()"},{"table_name":"instagram_content","column_name":"client_internal_id","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"profile_url","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"instagram_post_id","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"shortcode","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"video_url","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"caption","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"likes","data_type":"numeric","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"views","data_type":"numeric","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"video_duration","data_type":"double precision","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"created_at","data_type":"timestamp without time zone","is_nullable":"YES","column_default":"now()"},{"table_name":"instagram_content","column_name":"videoPlayCount","data_type":"numeric","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"commentsCounts","data_type":"numeric","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"?????? ??????","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"????????? ???????","data_type":"text","is_nullable":"YES","column_default":null},{"table_name":"instagram_content","column_name":"is_summary","data_type":"text","is_nullable":"YES","column_default":null}]
+
+
+SELECT T1.*
+FROM instagram_content T1
+INNER JOIN transkrib_insta T2 ON T1.shortcode = T2.shortcode
+
+
+
+SELECT T1.*
+FROM instagram_content T1
+INNER JOIN transkrib_insta T2 ON T1."video_url" = T2."Video_Url"

@@ -1,3 +1,6 @@
 # requirements.txt
 fastapi
 uvicorn[standard]
+supabase
+qdrant_client
+sentence_transformers

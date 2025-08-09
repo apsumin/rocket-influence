@@ -1,0 +1,44 @@
+[
+ 	{
+		"table":"YouTube Transkrib",
+		"map":[
+			{
+				"from":"URL_video",
+				"to":"url"
+			},
+			{
+				"from":"Text",
+				"to":"description"
+			}
+
+		]
+	},
+ 	{
+		"table":"Transkrib_TikTok",
+		"map":[
+			{
+				"from":"video_url",
+				"to":"url"
+			},
+			{
+				"from":"text",
+				"to":"description"
+			}
+
+		]
+	},
+ 	{
+		"table":"transkrib_insta",
+		"map":[
+			{
+				"from":"Video_Url",
+				"to":"url"
+			},
+			{
+				"from":"Text",
+				"to":"description"
+			}
+
+		]
+	}
+]
