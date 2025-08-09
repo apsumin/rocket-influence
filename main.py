@@ -46,7 +46,7 @@ def verify_null_values(data):
 
 @app.get("/")
 async def read_root():
-    return {"message": "Rocket Influence Custom REST API server is up!"}
+    return {"message": "Rocket Influence Custom REST API v1.0.0.0 server is up!"}
 
 @app.get("/health")
 async def health_check():
