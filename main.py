@@ -52,7 +52,7 @@ async def read_root():
 async def health_check():
     return {"status": "ok"}
 
-@app.get("/reload")
+@app.get("/api/reload")
 async def reload():
     tables = ["YouTube Transkrib", "Transkrib_TikTok","transkrib_insta"]
     for item in tables:
@@ -135,7 +135,14 @@ async def reload():
 
     return {"status": "ok"}
 
+@app.get("/api/search")
+async def read_item(q: str, neural: bool = True):
+    return {
+        "result":q
+    }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
