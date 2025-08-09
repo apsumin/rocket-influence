@@ -19,7 +19,7 @@ QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8O
 
 qdrant = QdrantClient(QDRANT_URL, api_key=QDRANT_API_KEY)
 
-encoder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+#encoder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
 
 def generate_unique_id(url):
@@ -144,5 +144,5 @@ async def read_item(q: str, neural: bool = True):
 
 
 # if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run(app, host="0.0.0.0", port=8000)
+#      import uvicorn
+#      uvicorn.run(app, host="0.0.0.0", port=8000)
