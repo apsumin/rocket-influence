@@ -19,7 +19,10 @@ QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8O
 
 qdrant = QdrantClient(QDRANT_URL, api_key=QDRANT_API_KEY)
 
-#encoder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+encoder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+
+COLLECTION = "rocket-influence"
+USING = "descriptions"
 
 
 def generate_unique_id(url):
@@ -46,7 +49,7 @@ def verify_null_values(data):
 
 @app.get("/")
 async def read_root():
-    return {"message": "Rocket Influence Custom REST API v1.0.0.0 server is up!"}
+    return {"message": "Rocket Influence Custom REST API v1.0.0.1 server is up!"}
 
 @app.get("/health")
 async def health_check():
@@ -54,6 +57,7 @@ async def health_check():
 
 @app.get("/api/reload")
 async def reload():
+    print("starting reload...")
     tables = ["YouTube Transkrib", "Transkrib_TikTok","transkrib_insta"]
     for item in tables:
         try:
@@ -69,6 +73,8 @@ async def reload():
 
         except Exception as e:
             print(e)
+
+    print("normalizing...")
     FOLDER = "./ri"
     __documents__ = []
     try:
@@ -95,8 +101,6 @@ async def reload():
     except Exception as e:
         print(f"{e}")
 
-    COLLECTION = "rocket-influence"
-    USING="descriptions"
     try:
         if not qdrant.collection_exists(COLLECTION):
             qdrant.create_collection(
@@ -110,7 +114,7 @@ async def reload():
             )
     except Exception as e:
         return (f"{e}")
-
+    print("vectorizing...")
     try:
         points = []
         for doc in __documents__:
@@ -125,6 +129,7 @@ async def reload():
                 )
             )
         # Point 32491be8-43bd-03c5-f64d-f91382321804
+        print("reloading...")
         qdrant.upsert(
             collection_name=COLLECTION,
             points=points,
@@ -137,9 +142,22 @@ async def reload():
 
 @app.get("/api/search")
 async def read_item(q: str, neural: bool = True):
-    return {
-        "result":q
-    }
+    print("quering...")
+    hits = qdrant.query_points(
+        using=USING,
+        collection_name=COLLECTION,
+        query=encoder.encode(q).tolist(),
+        limit=10,
+        with_vectors=True
+    ).points
+
+    sorted_hits = sorted(hits, key=lambda item: item.score, reverse=True)
+    response=[]
+    for hit in sorted_hits:
+        response.append({"score:":hit.score,"payload":hit.payload})
+
+    return response
+
 
 
 
