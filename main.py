@@ -1,12 +1,13 @@
 # main.py
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 import os
 import hashlib
 import json
 from supabase import create_client, Client
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
-
+from datetime import datetime
 app = FastAPI()
 
 supabase_url: str = "https://dfkeshhcxzqdafjfnxyx.supabase.co"
@@ -23,6 +24,40 @@ encoder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
 COLLECTION = "rocket-influence"
 USING = "descriptions"
+FOLDER = "./ri"
+HTML = """
+    <style>
+      table, th, td {
+        border: 0.5px solid;
+        border-collapse: collapse;
+      }
+      tr:nth-child(odd) {
+        background-color: lightgray;
+      }
+      tr:nth-child(even) {
+        background-color: white;
+      }
+      .my-table {
+        width: 100%;
+        border: 0.5px solid;
+        border-collapse: collapse;
+      }
+      .col-10 {
+        width: 10%;
+      }
+      .col-30 {
+        width: 30%;
+      }
+      .col-50 {
+        width: 50%;
+      }
+      .col-60 {
+        width: 60%;
+      }
+
+    </style>
+    <body>
+"""
 
 
 def generate_unique_id(url):
@@ -46,49 +81,73 @@ def verify_null_values(data):
                 return False
     return True
 
+def debug(m):
+    print(f"{datetime.now()}:{m}")
+
 
 @app.get("/")
 async def read_root():
-    return {"message": "Rocket Influence Custom REST API v1.0.0.1 server is up!"}
+    return {"message": "Rocket Influence Custom REST API v1.0.0.3 server is up!"}
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
 
-@app.get("/api/reload")
+@app.get("/api/reload", response_class=HTMLResponse)
 async def reload():
-    print("starting reload...")
-    tables = ["YouTube Transkrib", "Transkrib_TikTok","transkrib_insta"]
-    for item in tables:
-        try:
-            response=(
-                supabase.table(item).select("*")
-                .execute()
-            )
-            data = response.data
-            if  data:
-                file_path = f"./ri/{item}.json"
-                with open(file_path, 'w') as json_file:
-                    json.dump(data, json_file, indent=4)
+    debug("starting reload...")
+    start = datetime.now()
+    try:
+        with open(f'{FOLDER}/normalizer.json', 'r') as file:
+            normalizer = json.load(file)
+            tables = list(map(lambda item: item["table"], normalizer))
 
-        except Exception as e:
-            print(e)
+            for item in normalizer:
+                try:
+                    if "neq" in item:
+                        response = (
+                            supabase.table(item["table"]).select("*")
+                            #.neq(item["neq"]["column"], item["neq"]["value"].encode(encoding='utf-8', errors='strict'))
+                            .neq(item["neq"]["column"], "Ошибка")
+                            .execute()
+                        )
+                    else:
+                        response=(
+                            supabase.table(item["table"]).select("*")
+                            .execute()
+                        )
+                    data = response.data
+                    if  data:
+                        file_path = f"./ri/{item['table']}.json"
+                        with open(file_path, 'w') as json_file:
+                            json.dump(data, json_file, indent=4)
 
-    print("normalizing...")
-    FOLDER = "./ri"
+                except Exception as e:
+                    print(e)
+
+    except Exception as e:
+        print(e)
+
+
+    debug("normalizing...")
     __documents__ = []
     try:
         with open(f'{FOLDER}/normalizer.json', 'r') as file:
             normalizer = json.load(file)
 
             for item in normalizer:
-                print(item["table"])
+                debug(item["table"])
                 with open(f'{FOLDER}/{item["table"]}.json', 'r') as file:
                     document = json.load(file)
                     for d in document:
                         __item__ = {}
                         for m in item["map"]:
                             __item__[m["to"]] = d[m["from"]]
+                            if "verify_for_null" in m:
+                                if m["verify_for_null"] == True:
+                                    if __item__[m["to"]] is None:
+                                        __item__[m["to"]] = ""
+
                         if verify_null_values(__item__):
                             __documents__.append(__item__)
         __documents__ = remove_null_values(__documents__)
@@ -97,9 +156,9 @@ async def reload():
             json.dump(__documents__, json_file, indent=4)
 
     except json.JSONDecodeError:
-        return ("{Error: Could not decode JSON from the file.}")
+        return HTMLResponse(content="Error: Could not decode JSON from the file.")
     except Exception as e:
-        print(f"{e}")
+        return HTMLResponse(content=f"{e}")
 
     try:
         if not qdrant.collection_exists(COLLECTION):
@@ -113,8 +172,9 @@ async def reload():
                 }
             )
     except Exception as e:
-        return (f"{e}")
-    print("vectorizing...")
+        return HTMLResponse(content=f"{e}")
+
+    debug("vectorizing...")
     try:
         points = []
         for doc in __documents__:
@@ -123,26 +183,64 @@ async def reload():
                 models.PointStruct(
                     id=id,
                     vector={
-                        USING: encoder.encode(doc["description"]).tolist()
+                        USING: encoder.encode(f"{doc['blogger']}. {doc['description']}").tolist()
                     },
                     payload=doc
                 )
             )
         # Point 32491be8-43bd-03c5-f64d-f91382321804
-        print("reloading...")
+        debug("reloading...")
         qdrant.upsert(
             collection_name=COLLECTION,
             points=points,
-            wait=True
+            wait=False
         )
-    except Exception as e:
-        return (f"{e}")
+        end = datetime.now()
+        html=HTML
+        html+=f"<h3><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h3>"
+        html += f"<h3>{start}-{end}</h3>"
+        html += f"<h3>{len(__documents__)} points vectorized and loaded in  {(end - start).seconds} second(s).</h3>"
 
-    return {"status": "ok"}
+        html+="""
+                <table class="my-table">
+                    <tr>
+                        <td class="col-20">URL</td>
+                        <td class="col-20">Blogger</td>
+                        <td class="col-60">Description</td>
+                    </tr>
+        """
+        for doc in __documents__:
+            html += f"<tr><td class='col-20'><a href=\"{doc['url']}\">{doc['url']}</a></td><td class='col-20'>{doc['blogger']}</td><td class='col-60'>{doc['description']}</td></tr>"
+
+        html += """
+                </table>
+            </body>
+        """
+        return HTMLResponse(content=html)
+    except Exception as e:
+        return HTMLResponse(content=f"{e}")
 
 @app.get("/api/search")
 async def read_item(q: str, neural: bool = True):
-    print("quering...")
+    debug("quering...")
+    hits = qdrant.query_points(
+        using=USING,
+        collection_name=COLLECTION,
+        query=encoder.encode(q).tolist(),
+        limit=10,
+        with_vectors=True
+    ).points
+
+    sorted_hits = sorted(hits, key=lambda item: item.score, reverse=True)
+    response=[]
+    for hit in sorted_hits:
+        response.append({"score:":hit.score,"payload":hit.payload})
+    return response
+
+@app.get("/api/search/verify", response_class=HTMLResponse)
+async def read_verify(q: str):
+    debug("verification quering...")
+    start = datetime.now()
     hits = qdrant.query_points(
         using=USING,
         collection_name=COLLECTION,
@@ -156,11 +254,26 @@ async def read_item(q: str, neural: bool = True):
     for hit in sorted_hits:
         response.append({"score:":hit.score,"payload":hit.payload})
 
-    return response
+    end = datetime.now()
+    html = HTML
+    html += f"<h3><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h3>"
+    html += f"<h3>{q}</h3>"
+    html += f"<h3>{start}-{end}</h3>"
+    html += f"<h3>{(end-start).microseconds/1000}ms</h3>"
+
+    html += """
+            <table class="my-table">
+                <tr>
+                    <td class="col-10">Score</td>
+                    <td class="col-20">URL</td>
+                    <td class="col-60">Description</td>
+                </tr>
+    """
+    for hit in sorted_hits:
+        html += f"<tr><td class='col-10'>{hit.score}</td><td class='col-20'><a href=\"{hit.payload['url']}\">{hit.payload['url']}</a></td><td class='col-20'>{hit.payload['description']}</td></tr>"
+    return HTMLResponse(content=html)
 
 
-
-
-# if __name__ == "__main__":
-#      import uvicorn
-#      uvicorn.run(app, host="0.0.0.0", port=8000)
+if __name__ == "__main__":
+     import uvicorn
+     uvicorn.run(app, host="0.0.0.0", port=8000)

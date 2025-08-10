@@ -9,7 +9,13 @@
 			{
 				"from":"Text",
 				"to":"description"
+			},
+			{
+				"from":"Avtor",
+				"to":"blogger",
+				"verify_for_null":true
 			}
+
 
 		]
 	},
@@ -23,12 +29,20 @@
 			{
 				"from":"text",
 				"to":"description"
+			},
+			{
+				"from":"author_name",
+				"to":"blogger",
+				"verify_for_null":true
 			}
-
 		]
 	},
  	{
 		"table":"transkrib_insta",
+		"neq":{
+			"column":"Text",
+			"value":"Ошибка"
+		},
 		"map":[
 			{
 				"from":"Video_Url",
@@ -37,7 +51,13 @@
 			{
 				"from":"Text",
 				"to":"description"
+			},
+			{
+				"from":"author",
+				"to":"blogger",
+				"verify_for_null":true
 			}
+
 
 		]
 	}
