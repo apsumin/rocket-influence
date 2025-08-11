@@ -1,0 +1,67 @@
+
+#Rocket Influence Middleware server infrastructure:
+
+
+GITHUB="https://github.com/apsumin/rocket-influence"
+
+SUPABASE= "https://supabase.com/dashboard/project/dfkeshhcxzqdafjfnxyx"
+
+QDRANT="https://15af0a7f-12ff-481f-88fe-6da3734e8c13.us-east4-0.gcp.cloud.qdrant.io:6333/dashboard#/collections"
+QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8OyzTkUKWUccpB2SiRfl5S-WdwzI-MuGkgaMmN1Y"  
+
+
+
+
+#RI Middleware server API:
+
+https://rocket-influence-387465073046.us-east1.run.app
+https://rocket-influence-387465073046.us-east1.run.app/api/reload
+https://rocket-influence-387465073046.us-east1.run.app/api/search/verify?q="Test"
+https://rocket-influence-387465073046.us-east1.run.app/api/search?q="Test"
+
+https://winrus.com/keyboard.htm
+
+https://www.youtube.com/watch?v=This is 6thTest#101&NHEB8G34e-Y
+
+книга о скрипаче и фашистах и вешателе ампуле и награде и мерседесе
+
+проблемы с личным ростом
+
+игра в мафию
+
+мафия
+
+про мафию
+
+Ошибка
+
+книга о войне в праге
+
+книга о семье
+
+секрет просмотров
+
+прокрастинация
+
+про деньги
+
+медицина
+
+про двигатели
+
+описание машины
+
+Содержание
+1	Классификация автомобиля
+2	Конструкция автомобиля
+3	Производство автомобилей
+
+про машины
+
+
+
+снимать видео
+
+в чем сила продюсера
+
+разработка ФШ

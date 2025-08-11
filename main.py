@@ -1,6 +1,7 @@
 # main.py
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import os
 import hashlib
 import json
@@ -9,6 +10,7 @@ from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 from datetime import datetime
 app = FastAPI()
+app.mount("/docs", StaticFiles(directory="docs"), name="docs")
 
 GITHUB="https://github.com/apsumin/rocket-influence"
 SUPABASE= "https://supabase.com/dashboard/project/dfkeshhcxzqdafjfnxyx"
@@ -24,7 +26,7 @@ QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8O
 
 qdrant = QdrantClient(QDRANT_URL, api_key=QDRANT_API_KEY)
 
-VERSION="1.0.0.4"
+VERSION="1.0.0.5"
 MODEL="paraphrase-multilingual-MiniLM-L12-v2"
 INFO=f"Rocket Influence Middleware server. v{VERSION}"
 COLLECTION = "rocket-influence"
@@ -44,6 +46,11 @@ HTML = """
       }
       .my-table {
         width: 100%;
+        border: 0.5px solid;
+        border-collapse: collapse;
+      }
+      .my-table_2 {
+        width: 60%;
         border: 0.5px solid;
         border-collapse: collapse;
       }
@@ -108,19 +115,43 @@ async def read_root():
     html += "</table>"
 
     html += """
-            <table class="my-table">
+            <br>
+            <table class="my-table_2">
                 <tr>
                     <td class="col-20">API</td>
                 </tr>
     """
-    html += f"<tr><td class='col-30'><a href=\"/api/reload\">/api/reload</a></td></tr>"
-    html += f"<tr><td class='col-30'><a href=\"/api/search?q=\"test\"\">/api/search</a></td></tr>"
-    html += f"<tr><td class='col-30'><a href=\"/api/search/verify?q=\"test\"\">/api/search/verify</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/reload\">Call #1 - /api/reload</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/search?q=\"test\"\">Call #2 - /api/search</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/search/verify?q=\"test\"\">Call #2 - /api/search/verify</a></td></tr>"
 
     html += """
                 </table>
+        """
+    html += """
+            <br>
+            <table class="my-table_2">
+                <tr>
+                    <td class="col-30">Call #1</td>
+                    <td class="col-30">Call #2</td>
+                </tr>
+
+                <tr>
+                    <td class="col-30">
+                        <img src="/docs/call_1.jpg" alt="Call #1" style="width:450px;height:470px;"/>
+                    </td>
+                    <td class="col-30">
+                        <img src="/docs/call_2.jpg" alt="Call #2" style="width:450px;height:470px;"/>
+                    </td>
+                </tr>
+            </table>
+    """
+    html += """
             </body>
         """
+
+
+
     return HTMLResponse(content=f"{html}")
 
 @app.get("/health")
@@ -312,7 +343,6 @@ async def read_verify(q: str):
                 </table>
             </body>
         """
-
     return HTMLResponse(content=html)
 
 
