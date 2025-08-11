@@ -10,6 +10,10 @@ from sentence_transformers import SentenceTransformer
 from datetime import datetime
 app = FastAPI()
 
+GITHUB="https://github.com/apsumin/rocket-influence"
+SUPABASE= "https://supabase.com/dashboard/project/dfkeshhcxzqdafjfnxyx"
+QDRANT="https://15af0a7f-12ff-481f-88fe-6da3734e8c13.us-east4-0.gcp.cloud.qdrant.io:6333/dashboard#/collections"
+
 supabase_url: str = "https://dfkeshhcxzqdafjfnxyx.supabase.co"
 supabase_key: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRma2VzaGhjeHpxZGFmamZueHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyMzY3MTYsImV4cCI6MjA2NTgxMjcxNn0.EHxmcTzQ13c-j-6awsKp3fQVY8BUJVNdJNEc3OAl1Eo"
 
@@ -20,8 +24,9 @@ QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8O
 
 qdrant = QdrantClient(QDRANT_URL, api_key=QDRANT_API_KEY)
 
-encoder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-
+VERSION="1.0.0.4"
+MODEL="paraphrase-multilingual-MiniLM-L12-v2"
+INFO=f"Rocket Influence Middleware server. v{VERSION}"
 COLLECTION = "rocket-influence"
 USING = "descriptions"
 FOLDER = "./ri"
@@ -54,10 +59,10 @@ HTML = """
       .col-60 {
         width: 60%;
       }
-
     </style>
     <body>
 """
+encoder = SentenceTransformer(MODEL)
 
 
 def generate_unique_id(url):
@@ -85,9 +90,38 @@ def debug(m):
     print(f"{datetime.now()}:{m}")
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
+
 async def read_root():
-    return {"message": "Rocket Influence Custom REST API v1.0.0.3 server is up!"}
+    html = HTML
+    html += f"<h3>{INFO}</h3>"
+    html += f"<h3>{MODEL}</h3>"
+    html += """
+            <table class="my-table">
+                <tr>
+                    <td class="col-30">Supabase URL</td>
+                    <td class="col-60">Qdrant URL</td>
+                    <td class="col-30">GitHub Repository URL</td>
+                </tr>
+    """
+    html += f"<tr><td class='col-30'><a href=\"{SUPABASE}\">{SUPABASE}</a></td><td class='col-60'><a href=\"{QDRANT}\">{QDRANT}</a></td><td class='col-30'><a href=\"{GITHUB}\">{GITHUB}</a></td></tr>"
+    html += "</table>"
+
+    html += """
+            <table class="my-table">
+                <tr>
+                    <td class="col-20">API</td>
+                </tr>
+    """
+    html += f"<tr><td class='col-30'><a href=\"/api/reload\">/api/reload</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/search?q=\"test\"\">/api/search</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/search/verify?q=\"test\"\">/api/search/verify</a></td></tr>"
+
+    html += """
+                </table>
+            </body>
+        """
+    return HTMLResponse(content=f"{html}")
 
 @app.get("/health")
 async def health_check():
@@ -197,9 +231,12 @@ async def reload():
         )
         end = datetime.now()
         html=HTML
-        html+=f"<h3><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h3>"
-        html += f"<h3>{start}-{end}</h3>"
-        html += f"<h3>{len(__documents__)} points vectorized and loaded in  {(end - start).seconds} second(s).</h3>"
+        html+=f"<h3>{INFO}</h3>"
+        html+=f"<h3>{MODEL}</h3>"
+
+        html+=f"<h4><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h4>"
+        #html += f"<h3>{start}-{end}</h3>"
+        html += f"<h4>{len(__documents__)} points vectorized and loaded in  {(end - start).seconds} second(s).</h4>"
 
         html+="""
                 <table class="my-table">
@@ -256,10 +293,10 @@ async def read_verify(q: str):
 
     end = datetime.now()
     html = HTML
-    html += f"<h3><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h3>"
-    html += f"<h3>{q}</h3>"
-    html += f"<h3>{start}-{end}</h3>"
-    html += f"<h3>{(end-start).microseconds/1000}ms</h3>"
+    html += f"<h3>{INFO}</h3>"
+    html += f"<h4><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h4>"
+    html += f"<h4>{q} {(end-start).microseconds/1000}ms</h4>"
+    #html += f"<h4>{(end-start).microseconds/1000}ms</h4>"
 
     html += """
             <table class="my-table">
@@ -271,9 +308,14 @@ async def read_verify(q: str):
     """
     for hit in sorted_hits:
         html += f"<tr><td class='col-10'>{hit.score}</td><td class='col-20'><a href=\"{hit.payload['url']}\">{hit.payload['url']}</a></td><td class='col-20'>{hit.payload['description']}</td></tr>"
+    html += """
+                </table>
+            </body>
+        """
+
     return HTMLResponse(content=html)
 
 
-if __name__ == "__main__":
-     import uvicorn
-     uvicorn.run(app, host="0.0.0.0", port=8000)
+# if __name__ == "__main__":
+#      import uvicorn
+#      uvicorn.run(app, host="0.0.0.0", port=8000)
