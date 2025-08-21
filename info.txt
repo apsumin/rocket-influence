@@ -15,9 +15,30 @@ QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8O
 #RI Middleware server API:
 
 https://rocket-influence-387465073046.us-east1.run.app
-https://rocket-influence-387465073046.us-east1.run.app/api/reload
-https://rocket-influence-387465073046.us-east1.run.app/api/search/verify?q="Test"
-https://rocket-influence-387465073046.us-east1.run.app/api/search?q="Test"
+
+https://rocket-influence-387465073046.us-east1.run.app/api/v2/reload
+
+https://rocket-influence-387465073046.us-east1.run.app/api/search?q=%22about%20money%22
+
+https://rocket-influence-387465073046.us-east1.run.app/api/search/verify?q=%22about%20money%22
+
+https://rocket-influence-387465073046.us-east1.run.app/api/v2/qdrant/list
+
+
+
+
+#Build
+https://console.cloud.google.com/cloud-build/builds?invt=Ab6B-g&project=dark-smile-467814-j7
+#Jobs
+https://console.cloud.google.com/cloudscheduler?inv=1&invt=Ab6ADg&project=dark-smile-467814-j7
+
+
+
+
+http://localhost:8000/api/v2/reload
+
+http://localhost:8000/api/search/verify?q="TEST"
+
 
 https://winrus.com/keyboard.htm
 

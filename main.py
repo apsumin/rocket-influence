@@ -5,8 +5,15 @@ from fastapi.staticfiles import StaticFiles
 import os
 import hashlib
 import json
+
 from supabase import create_client, Client
 from qdrant_client import QdrantClient, models
+
+# import sqlalchemy as sa
+# from sqlalchemy import create_engine, select, Column, Integer, String, Boolean, Table, MetaData
+# from sqlalchemy.ext.declarative import declarative_base
+
+
 from sentence_transformers import SentenceTransformer
 from datetime import datetime
 app = FastAPI()
@@ -26,7 +33,9 @@ QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8O
 
 RT_VIDEOTRANSCRIBTION_TABLE = "rt_videotranscribtion"
 
-IS_VECORIZED="is_vectorized"
+__IS_VECTORIZED__="is_vectorized"
+__TEXT__="text"
+
 
 qdrant = QdrantClient(QDRANT_URL, api_key=QDRANT_API_KEY)
 
@@ -60,15 +69,24 @@ HTML = """
       }
       .col-10 {
         width: 10%;
+        vertical-align: top;
       }
       .col-30 {
         width: 30%;
+        vertical-align: top;
       }
+      .col-20 {
+        width: 20%;
+        vertical-align: top;
+      }
+
       .col-50 {
         width: 50%;
+        vertical-align: top;
       }
       .col-60 {
         width: 60%;
+        vertical-align: top;
       }
     </style>
     <body>
@@ -125,9 +143,10 @@ async def read_root():
                     <td class="col-20">API</td>
                 </tr>
     """
-    html += f"<tr><td class='col-30'><a href=\"/api/reload\">Call #1 - /api/reload</a></td></tr>"
-    html += f"<tr><td class='col-30'><a href=\"/api/search?q=\"test\"\">Call #2 - /api/search</a></td></tr>"
-    html += f"<tr><td class='col-30'><a href=\"/api/search/verify?q=\"test\"\">Call #2 - /api/search/verify</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/v2/reload\">/api/v2/reload</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/search?q=%22%22\">/api/search</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/search/verify?q=%22%22\">/api/search/verify</a></td></tr>"
+    html += f"<tr><td class='col-30'><a href=\"/api/v2/qdrant/verify/list\">/api/v2/qdrant/verify/list</a></td></tr>"
 
     html += """
                 </table>
@@ -156,144 +175,159 @@ async def read_root():
     return HTMLResponse(content=f"{html}")
 
 
-@app.get("/api/reload", response_class=HTMLResponse)
-async def reload():
-    debug("starting reload...")
-    start = datetime.now()
-    try:
-        with open(f'{FOLDER}/normalizer.json', 'r') as file:
-            normalizer = json.load(file)
-            tables = list(map(lambda item: item["table"], normalizer))
+# @app.get("/api/reload", response_class=HTMLResponse)
+# async def reload():
+#     debug("starting reload...")
+#     start = datetime.now()
+#     try:
+#         with open(f'{FOLDER}/normalizer.json', 'r') as file:
+#             normalizer = json.load(file)
+#             tables = list(map(lambda item: item["table"], normalizer))
+#
+#             for item in normalizer:
+#                 try:
+#                     if "neq" in item:
+#                         response = (
+#                             supabase.table(item["table"]).select("*")
+#                             #.neq(item["neq"]["column"], item["neq"]["value"].encode(encoding='utf-8', errors='strict'))
+#                             .neq(item["neq"]["column"], "Ошибка")
+#                             .execute()
+#                         )
+#                     else:
+#                         response=(
+#                             supabase.table(item["table"]).select("*")
+#                             .execute()
+#                         )
+#                     data = response.data
+#                     if  data:
+#                         file_path = f"./ri/{item['table']}.json"
+#                         with open(file_path, 'w') as json_file:
+#                             json.dump(data, json_file, indent=4)
+#
+#                 except Exception as e:
+#                     print(e)
+#
+#     except Exception as e:
+#         print(e)
+#
+#     debug("normalizing...")
+#     __documents__ = []
+#     try:
+#         with open(f'{FOLDER}/normalizer.json', 'r') as file:
+#             normalizer = json.load(file)
+#
+#             for item in normalizer:
+#                 debug(item["table"])
+#                 with open(f'{FOLDER}/{item["table"]}.json', 'r') as file:
+#                     document = json.load(file)
+#                     for d in document:
+#                         __item__ = {}
+#                         for m in item["map"]:
+#                             __item__[m["to"]] = d[m["from"]]
+#                             if "verify_for_null" in m:
+#                                 if m["verify_for_null"] == True:
+#                                     if __item__[m["to"]] is None:
+#                                         __item__[m["to"]] = ""
+#
+#                         if verify_null_values(__item__):
+#                             __documents__.append(__item__)
+#         __documents__ = remove_null_values(__documents__)
+#
+#         with open(f'{FOLDER}/normalized.json', 'w') as json_file:
+#             json.dump(__documents__, json_file, indent=4)
+#
+#     except json.JSONDecodeError:
+#         return HTMLResponse(content="Error: Could not decode JSON from the file.")
+#     except Exception as e:
+#         return HTMLResponse(content=f"{e}")
+#
+#     try:
+#         if not qdrant.collection_exists(COLLECTION):
+#             qdrant.create_collection(
+#                 collection_name=COLLECTION,
+#                 vectors_config={
+#                     USING:models.VectorParams(
+#                         size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
+#                         distance=models.Distance.COSINE,
+#                 )
+#                 }
+#             )
+#     except Exception as e:
+#         return HTMLResponse(content=f"{e}")
+#
+#     debug("vectorizing...")
+#     try:
+#         points = []
+#         for doc in __documents__:
+#             id = generate_unique_id(doc["url"])
+#             points.append(
+#                 models.PointStruct(
+#                     id=id,
+#                     vector={
+#                         USING: encoder.encode(f"{doc['blogger']}. {doc['description']}").tolist()
+#                     },
+#                     payload=doc
+#                 )
+#             )
+#         # Point 32491be8-43bd-03c5-f64d-f91382321804
+#         debug("reloading...")
+#         qdrant.upsert(
+#             collection_name=COLLECTION,
+#             points=points,
+#             wait=False
+#         )
+#         end = datetime.now()
+#         html=HTML
+#         html+=f"<h3>{INFO}</h3>"
+#         html+=f"<h3>{MODEL}</h3>"
+#
+#         html+=f"<h4><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h4>"
+#         #html += f"<h3>{start}-{end}</h3>"
+#         html += f"<h4>{len(__documents__)} points vectorized and loaded in  {(end - start).seconds} second(s).</h4>"
+#
+#         html+="""
+#                 <table class="my-table">
+#                     <tr>
+#                         <td class="col-20">URL</td>
+#                         <td class="col-20">Blogger</td>
+#                         <td class="col-60">Description</td>
+#                     </tr>
+#         """
+#         for doc in __documents__:
+#             html += f"<tr><td class='col-20'><a href=\"{doc['url']}\">{doc['url']}</a></td><td class='col-20'>{doc['blogger']}</td><td class='col-60'>{doc['description']}</td></tr>"
+#
+#         html += """
+#                 </table>
+#             </body>
+#         """
+#         return HTMLResponse(content=html)
+#     except Exception as e:
+#         return HTMLResponse(content=f"{e}")
 
-            for item in normalizer:
-                try:
-                    if "neq" in item:
-                        response = (
-                            supabase.table(item["table"]).select("*")
-                            #.neq(item["neq"]["column"], item["neq"]["value"].encode(encoding='utf-8', errors='strict'))
-                            .neq(item["neq"]["column"], "Ошибка")
-                            .execute()
-                        )
-                    else:
-                        response=(
-                            supabase.table(item["table"]).select("*")
-                            .execute()
-                        )
-                    data = response.data
-                    if  data:
-                        file_path = f"./ri/{item['table']}.json"
-                        with open(file_path, 'w') as json_file:
-                            json.dump(data, json_file, indent=4)
+# # Option 1: Using SQLAlchemy ORM
+# Base = declarative_base()
+#
+# class VideoTranscribtion(Base):
+#     __tablename__ = 'rt_VideoTranscribtion'
+#     id = Column(Integer, primary_key=True)
+#     text = Column(String)
+#     is_vectorized = Column(Boolean)
 
-                except Exception as e:
-                    print(e)
-
-    except Exception as e:
-        print(e)
-
-    debug("normalizing...")
-    __documents__ = []
-    try:
-        with open(f'{FOLDER}/normalizer.json', 'r') as file:
-            normalizer = json.load(file)
-
-            for item in normalizer:
-                debug(item["table"])
-                with open(f'{FOLDER}/{item["table"]}.json', 'r') as file:
-                    document = json.load(file)
-                    for d in document:
-                        __item__ = {}
-                        for m in item["map"]:
-                            __item__[m["to"]] = d[m["from"]]
-                            if "verify_for_null" in m:
-                                if m["verify_for_null"] == True:
-                                    if __item__[m["to"]] is None:
-                                        __item__[m["to"]] = ""
-
-                        if verify_null_values(__item__):
-                            __documents__.append(__item__)
-        __documents__ = remove_null_values(__documents__)
-
-        with open(f'{FOLDER}/normalized.json', 'w') as json_file:
-            json.dump(__documents__, json_file, indent=4)
-
-    except json.JSONDecodeError:
-        return HTMLResponse(content="Error: Could not decode JSON from the file.")
-    except Exception as e:
-        return HTMLResponse(content=f"{e}")
-
-    try:
-        if not qdrant.collection_exists(COLLECTION):
-            qdrant.create_collection(
-                collection_name=COLLECTION,
-                vectors_config={
-                    USING:models.VectorParams(
-                        size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
-                        distance=models.Distance.COSINE,
-                )
-                }
-            )
-    except Exception as e:
-        return HTMLResponse(content=f"{e}")
-
-    debug("vectorizing...")
-    try:
-        points = []
-        for doc in __documents__:
-            id = generate_unique_id(doc["url"])
-            points.append(
-                models.PointStruct(
-                    id=id,
-                    vector={
-                        USING: encoder.encode(f"{doc['blogger']}. {doc['description']}").tolist()
-                    },
-                    payload=doc
-                )
-            )
-        # Point 32491be8-43bd-03c5-f64d-f91382321804
-        debug("reloading...")
-        qdrant.upsert(
-            collection_name=COLLECTION,
-            points=points,
-            wait=False
-        )
-        end = datetime.now()
-        html=HTML
-        html+=f"<h3>{INFO}</h3>"
-        html+=f"<h3>{MODEL}</h3>"
-
-        html+=f"<h4><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h4>"
-        #html += f"<h3>{start}-{end}</h3>"
-        html += f"<h4>{len(__documents__)} points vectorized and loaded in  {(end - start).seconds} second(s).</h4>"
-
-        html+="""
-                <table class="my-table">
-                    <tr>
-                        <td class="col-20">URL</td>
-                        <td class="col-20">Blogger</td>
-                        <td class="col-60">Description</td>
-                    </tr>
-        """
-        for doc in __documents__:
-            html += f"<tr><td class='col-20'><a href=\"{doc['url']}\">{doc['url']}</a></td><td class='col-20'>{doc['blogger']}</td><td class='col-60'>{doc['description']}</td></tr>"
-
-        html += """
-                </table>
-            </body>
-        """
-        return HTMLResponse(content=html)
-    except Exception as e:
-        return HTMLResponse(content=f"{e}")
 
 
 @app.get("/api/v2/reload")
 async def reload2():
     debug("starting reload...")
-    response = (
-        supabase.table(RT_VIDEOTRANSCRIBTION_TABLE).select("*")
-        .eq(IS_VECORIZED, False)
-        .execute()
-    )
+    try:
+        response = (
+            supabase.table(RT_VIDEOTRANSCRIBTION_TABLE).select("*")
+            .eq(__IS_VECTORIZED__, False)
+            .not_.is_(__TEXT__, 'null')
+            .execute()
+        )
+    except Exception as e:
+        return {"status": f"{str(e)}"}
+
     data = response.data
     try:
         if not qdrant.collection_exists(COLLECTION):
@@ -307,7 +341,7 @@ async def reload2():
                 }
             )
     except Exception as e:
-        return {"status": "error"}
+        return {"status": f"{str(e)}"}
 
     if data:
         points = []
@@ -323,15 +357,27 @@ async def reload2():
                         payload=row
                     )
                 )
-
             except Exception as e:
-                return {"status": "error"}
+                return {"status": f"{str(e)}"}
+
         debug("reloading...")
         qdrant.upsert(
             collection_name=COLLECTION,
             points=points,
             wait=False
         )
+        try:
+            ids = [row["id"] for row in data]
+            response = supabase.table(RT_VIDEOTRANSCRIBTION_TABLE).update(
+                {__IS_VECTORIZED__: "true"}  # Same value for all
+            ).in_("id", ids).execute()
+
+            response = [row for row in data]
+            return response
+
+        except Exception as e:
+            return {"status": f"{str(e)}"}
+
         # file_path = f"./ri/{RT_VIDEOTRANSCRIBTION_TABLE}.json"
         # with open(file_path, 'w') as json_file:
         #      json.dump(data, json_file, indent=4)
@@ -360,6 +406,13 @@ async def read_item(q: str, neural: bool = True):
         response.append({"score:":hit.score,"payload":hit.payload})
     return response
 
+
+@app.get("/api/v2/qdrant/list", response_class=HTMLResponse)
+async def list():
+    return HTMLResponse(content="")
+
+
+
 @app.get("/api/search/verify", response_class=HTMLResponse)
 async def read_verify(q: str):
     debug("verification quering...")
@@ -368,7 +421,7 @@ async def read_verify(q: str):
         using=USING,
         collection_name=COLLECTION,
         query=encoder.encode(q).tolist(),
-        limit=10,
+        limit=200,
         with_vectors=True
     ).points
 
@@ -380,6 +433,7 @@ async def read_verify(q: str):
     end = datetime.now()
     html = HTML
     html += f"<h3>{INFO}</h3>"
+    html += f"<h4><a href=\"/\">Home</a></h4>"
     html += f"<h4><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h4>"
     html += f"<h4>{q} {(end-start).microseconds/1000}ms</h4>"
     #html += f"<h4>{(end-start).microseconds/1000}ms</h4>"
