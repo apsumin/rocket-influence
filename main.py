@@ -334,7 +334,7 @@ async def reload2():
         )
         # file_path = f"./ri/{RT_VIDEOTRANSCRIBTION_TABLE}.json"
         # with open(file_path, 'w') as json_file:
-        #     json.dump(data, json_file, indent=4)
+        #      json.dump(data, json_file, indent=4)
     return {"status": "ok"}
 
 
@@ -393,7 +393,7 @@ async def read_verify(q: str):
                 </tr>
     """
     for hit in sorted_hits:
-        html += f"<tr><td class='col-10'>{hit.score}</td><td class='col-20'><a href=\"{hit.payload['url']}\">{hit.payload['url']}</a></td><td class='col-20'>{hit.payload['description']}</td></tr>"
+        html += f"<tr><td class='col-10'>{hit.score}</td><td class='col-20'><a href=\"{hit.payload['url']}\">{hit.payload['url']}</a></td><td class='col-20'>{hit.payload['text']}</td></tr>"
     html += """
                 </table>
             </body>
