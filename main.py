@@ -24,6 +24,10 @@ supabase: Client = create_client(supabase_url, supabase_key)
 QDRANT_URL = "https://15af0a7f-12ff-481f-88fe-6da3734e8c13.us-east4-0.gcp.cloud.qdrant.io:6333"  # http://localhost:6333 for local instance
 QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.aXa8OyzTkUKWUccpB2SiRfl5S-WdwzI-MuGkgaMmN1Y"  # None for local instance
 
+RT_VIDEOTRANSCRIBTION_TABLE = "rt_videotranscribtion"
+
+IS_VECORIZED="is_vectorized"
+
 qdrant = QdrantClient(QDRANT_URL, api_key=QDRANT_API_KEY)
 
 VERSION="1.0.0.5"
@@ -148,15 +152,9 @@ async def read_root():
     """
     html += """
             </body>
-        """
-
-
-
+       """
     return HTMLResponse(content=f"{html}")
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
 
 @app.get("/api/reload", response_class=HTMLResponse)
 async def reload():
@@ -192,7 +190,6 @@ async def reload():
 
     except Exception as e:
         print(e)
-
 
     debug("normalizing...")
     __documents__ = []
@@ -287,6 +284,64 @@ async def reload():
         return HTMLResponse(content=html)
     except Exception as e:
         return HTMLResponse(content=f"{e}")
+
+
+@app.get("/api/v2/reload")
+async def reload2():
+    debug("starting reload...")
+    response = (
+        supabase.table(RT_VIDEOTRANSCRIBTION_TABLE).select("*")
+        .eq(IS_VECORIZED, False)
+        .execute()
+    )
+    data = response.data
+    try:
+        if not qdrant.collection_exists(COLLECTION):
+            qdrant.create_collection(
+                collection_name=COLLECTION,
+                vectors_config={
+                    USING:models.VectorParams(
+                        size=encoder.get_sentence_embedding_dimension(),  # Vector size is defined by used model
+                        distance=models.Distance.COSINE,
+                )
+                }
+            )
+    except Exception as e:
+        return {"status": "error"}
+
+    if data:
+        points = []
+        for row in data:
+            try:
+                id = row["id"]
+                points.append(
+                    models.PointStruct(
+                        id=id,
+                        vector={
+                            USING: encoder.encode(f"{row['text']}").tolist()
+                        },
+                        payload=row
+                    )
+                )
+
+            except Exception as e:
+                return {"status": "error"}
+        debug("reloading...")
+        qdrant.upsert(
+            collection_name=COLLECTION,
+            points=points,
+            wait=False
+        )
+        # file_path = f"./ri/{RT_VIDEOTRANSCRIBTION_TABLE}.json"
+        # with open(file_path, 'w') as json_file:
+        #     json.dump(data, json_file, indent=4)
+    return {"status": "ok"}
+
+
+
+
+
+
 
 @app.get("/api/search")
 async def read_item(q: str, neural: bool = True):

@@ -1,0 +1,323 @@
+
+https://chat.z.ai/s/48669729-c46a-49f7-8841-593cf998ac3d
+
+
+Step 1: Data Preparation and Feature Engineering
+
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+# Load interaction data (user_id, item_id, rating, timestamp)
+interactions = pd.read_csv('user_interactions.csv')
+
+# Load item metadata (item_id, category, description, price, etc.)
+items = pd.read_csv('items.csv')
+
+# Feature engineering
+# Normalize numerical features
+scaler = StandardScaler()
+items['price_normalized'] = scaler.fit_transform(items[['price']])
+
+# Create categorical features
+items['category_encoded'] = pd.Categorical(items['category']).codes
+
+
+
+
+
+Step 2: Embedding Generation
+
+
+from sentence_transformers import SentenceTransformer
+import torch
+
+# Load multilingual model that supports Russian
+model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+# Generate text embeddings for item descriptions
+item_descriptions = items['description'].tolist()
+item_text_embeddings = model.encode(item_descriptions, convert_to_tensor=True)
+
+# For sparse vectors (SPLADE)
+from transformers import AutoTokenizer, AutoModelForMaskedLM
+import torch
+
+tokenizer = AutoTokenizer.from_pretrained("naver/splade-cocondenser-ensembledistil")
+splade_model = AutoModelForMaskedLM.from_pretrained("naver/splade-cocondenser-ensembledistil")
+
+def get_sparse_vector(text):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    with torch.no_grad():
+        outputs = splade_model(**inputs)
+    logits = outputs.logits
+    sparse_vec = torch.max(torch.log(1 + torch.relu(logits)), dim=1).values
+    return sparse_vec
+
+item_sparse_embeddings = [get_sparse_vector(desc) for desc in item_descriptions]
+
+
+
+
+Step 3: Setting Up Qdrant
+
+
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams, PointStruct
+
+# Initialize Qdrant client
+client = QdrantClient(host='localhost', port=6333)
+
+# Create collection with both dense and sparse vectors
+client.recreate_collection(
+    collection_name="recommendations",
+    vectors_config={
+        "dense": VectorParams(size=384, distance=Distance.COSINE),  # Size depends on your embedding model
+    },
+    sparse_vectors_config={
+        "sparse": VectorParams(size=30522, distance=Distance.DOT)  # Size depends on SPLADE model
+    }
+)
+
+
+
+Step 4: Indexing Data in Qdrant
+
+
+
+# Prepare points for indexing
+points = []
+for idx, row in items.iterrows():
+    point = PointStruct(
+        id=row['item_id'],
+        vector={
+            "dense": item_text_embeddings[idx].cpu().numpy(),
+            "sparse": item_sparse_embeddings[idx].cpu().numpy().flatten()
+        },
+        payload={
+            "item_id": row['item_id'],
+            "category": row['category'],
+            "price": row['price'],
+            "description": row['description']
+        }
+    )
+    points.append(point)
+
+# Upload to Qdrant
+client.upsert(
+    collection_name="recommendations",
+    points=points
+)
+
+
+Step 5: Building the Recommendation Engine
+
+
+def get_recommendations(user_id, limit=10):
+    # Get user's interaction history
+    user_interactions = interactions[interactions['user_id'] == user_id]
+    
+    # If user has no history, return popular items
+    if len(user_interactions) == 0:
+        return get_popular_items(limit)
+    
+    # Generate user embedding based on interacted items
+    interacted_items = user_interactions['item_id'].tolist()
+    user_dense_embedding = get_user_dense_embedding(interacted_items)
+    user_sparse_embedding = get_user_sparse_embedding(interacted_items)
+    
+    # Hybrid search in Qdrant
+    search_result = client.search(
+        collection_name="recommendations",
+        query_vector={
+            "dense": user_dense_embedding,
+            "sparse": user_sparse_embedding
+        },
+        query_filter=Filter(
+            must_not=[
+                FieldCondition(key="item_id", match=MatchValue(value=item_id))
+                for item_id in interacted_items
+            ]
+        ),
+        limit=limit,
+        with_payload=True,
+        score_threshold=0.5
+    )
+    
+    return [hit.payload for hit in search_result]
+
+def get_user_dense_embedding(interacted_items):
+    # Average embeddings of interacted items
+    embeddings = []
+    for item_id in interacted_items:
+        # Retrieve item embedding from Qdrant
+        item = client.retrieve(
+            collection_name="recommendations",
+            ids=[item_id],
+            with_vectors=True
+        )
+        embeddings.append(item[0].vector['dense'])
+    
+    # Weighted average based on interaction strength
+    weights = [get_interaction_weight(item_id) for item_id in interacted_items]
+    weighted_embeddings = np.average(embeddings, axis=0, weights=weights)
+    return weighted_embeddings
+
+def get_user_sparse_embedding(interacted_items):
+    # Similar approach for sparse embeddings
+    # ...
+
+
+Step 6: Advanced Features
+
+
+def update_user_profile(user_id, item_id, interaction_type):
+    # Update user embedding in real-time
+    # ...
+    
+    # Log interaction for model retraining
+    log_interaction(user_id, item_id, interaction_type)
+
+
+
+B. Context-Aware Recommendations
+
+
+def get_contextual_recommendations(user_id, context, limit=10):
+    # Modify user embedding based on context
+    context_embedding = model.encode(context['search_query'])
+    user_embedding = get_user_embedding(user_id)
+    
+    # Combine user and context embeddings
+    combined_embedding = 0.7 * user_embedding + 0.3 * context_embedding
+    
+    # Search with combined embedding
+    search_result = client.search(
+        collection_name="recommendations",
+        query_vector=combined_embedding,
+        query_filter=Filter(
+            must=[
+                FieldCondition(key="category", match=MatchValue(value=context['category']))
+            ]
+        ),
+        limit=limit
+    )
+    
+    return search_result
+
+
+C. Diversity and Serendipity
+
+
+
+def get_diverse_recommendations(user_id, limit=10):
+    # Get initial recommendations
+    initial_recs = get_recommendations(user_id, limit * 2)
+    
+    # Re-rank for diversity
+    diverse_recs = maximize_diversity(initial_recs, limit)
+    return diverse_recs
+
+def maximize_diversity(items, limit):
+    # Implement MMR (Maximal Marginal Relevance) or other diversity algorithm
+    # ...
+
+
+
+
+Step 7: Evaluation and Continuous Improvement
+
+
+
+def evaluate_recommendations(test_set):
+    precision = []
+    recall = []
+    
+    for user_id, actual_items in test_set.items():
+        recommended_items = get_recommendations(user_id)
+        
+        # Calculate metrics
+        precision.append(calculate_precision(actual_items, recommended_items))
+        recall.append(calculate_recall(actual_items, recommended_items))
+    
+    return np.mean(precision), np.mean(recall)
+
+# A/B testing framework
+def run_ab_test():
+    # Implement A/B testing between different recommendation strategies
+    # ...
+
+
+3. Deployment Considerations
+
+
+client.recreate_collection(
+    collection_name="recommendations",
+    vectors_config={...},
+    sparse_vectors_config={...},
+    shard_number=4  # Number of shards
+)
+
+
+Quantization: Reduce memory usage with quantizatio
+
+
+client.update_collection(
+    collection_name="recommendations",
+    quantization_config=QuantizationConfig(
+        scalar=ScalarQuantization(
+            type=ScalarType.INT8,
+            quantile=0.99,
+            always_ram=True
+        )
+    )
+)
+
+
+4. Monitoring and Maintenance
+
+
+# Set up monitoring for Qdrant performance
+def monitor_qdrant():
+    collection_info = client.get_collection("recommendations")
+    print(f"Vectors count: {collection_info.points_count}")
+    print(f"Index status: {collection_index_status}")
+    print(f"Memory usage: {collection_memory_usage}")
+    
+    # Track recommendation quality metrics
+    track_recommendation_metrics()
+
+
+
+
+5. Example API Endpoint
+
+
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class RecommendationRequest(BaseModel):
+    user_id: str
+    limit: int = 10
+    context: dict = None
+
+@app.post("/recommendations")
+async def get_recommendations(request: RecommendationRequest):
+    try:
+        if request.context:
+            recommendations = get_contextual_recommendations(
+                request.user_id, 
+                request.context, 
+                request.limit
+            )
+        else:
+            recommendations = get_recommendations(request.user_id, request.limit)
+        
+        return {"recommendations": recommendations}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
