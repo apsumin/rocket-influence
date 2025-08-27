@@ -97,7 +97,7 @@ __IS_VECTORIZED_V2__        ="is_vectorized_v2"
 
 qdrant = QdrantClient(QDRANT_URL, api_key=QDRANT_API_KEY, timeout=180)
 
-VERSION     ="1.0.0.8"
+VERSION     ="1.0.0.9"
 INFO        =f"Rocket Influence Middleware server. v{VERSION}"
 COLLECTION  = "rocket-influence"
 USING       ="descriptions"
@@ -110,6 +110,7 @@ HYBRID_COLLECTION = "rocket-influence-hybrid"
 #MODEL	="ai-forever/ru-en-RoSBERTa"
 #MODEL	="jinaai/jina-embeddings-v3"
 MODEL  	="paraphrase-multilingual-MiniLM-L12-v2"
+#MODEL  	="gemini-embedding-001"
 
 
 DESCRIPTION_VECTOR="description"
@@ -255,19 +256,19 @@ async def search3(using: str, q: str):
                         query=query,
                         using=TITLE_VECTOR,
                         with_payload=True,
-                        limit=10,
+                        limit=20,
                     ),
-                    # models.QueryRequest(
-                    #     query=query,
-                    #     using=DESCRIPTION_VECTOR,
-                    #     with_payload=True,
-                    #     limit=10,
-                    # ),
+                    models.QueryRequest(
+                        query=query,
+                        using=DESCRIPTION_VECTOR,
+                        with_payload=True,
+                        limit=20,
+                    ),
                     models.QueryRequest(
                         query=query,
                         using=TEXT_VECTOR,
                         with_payload=True,
-                        limit=10,
+                        limit=20,
                     )
                 ]
             )
@@ -289,7 +290,8 @@ async def search3(using: str, q: str):
     html += f"<h3>{INFO}</h3>"
     html += f"<h4><a href=\"/\">Home</a></h4>"
     html += f"<h4><a href=\"{QDRANT_URL}/dashboard#/collections\">{QDRANT_URL}</a></h4>"
-    html += f"<h4>{q}: {(end-start).microseconds/1000}ms</h4>"
+    html += f"<h4>{MODEL}</h4>"
+    html += f"<h4>{using}:{q}: {(end-start).microseconds/1000}ms</h4>"
     #html += f"<h4>{(end-start).microseconds/1000}ms</h4>"
 
     html += """
@@ -303,7 +305,14 @@ async def search3(using: str, q: str):
     """
     try:
         for hit in __sorted:
-            html += f"<tr><td class='col-5'>{hit.score}</td><td class='col-10'>{hit.payload['title']}</td><td class='col-20'>{hit.payload['description']}</td><td class='col-60'>{hit.payload['text']}</td></tr>"
+            if using == "all":
+                html += f"<tr><td class='col-5'>{hit.score}</td><td class='col-10'>{hit.payload['title']}</td><td class='col-20'>{hit.payload['description']}</td><td class='col-60'>{hit.payload['text']}</td></tr>"
+            else:
+                if using == "text":
+                    html += f"<tr><td class='col-5'>{hit.score}</td><td class='col-10'>{hit.payload['title']}</td><td class='col-20'>{hit.payload['description']}</td><td class='col-60'>{hit.payload['text']}</td></tr>"
+                else:
+                    html += f"<tr><td class='col-5'>{hit.score}</td><td class='col-10'>{hit.payload['title']}</td><td class='col-20'>{hit.payload['description']}</td><td class='col-60'>{hit.payload['text'][:256]}</td></tr>"
+
     except Exception as e:
         return HTMLResponse(content=f"status: {str(e)}")
 
@@ -359,8 +368,8 @@ async def verify_v2(q: str):
 
 
 
-# if __name__ == "__main__":
-#      import uvicorn
-#      uvicorn.run(app, host="0.0.0.0", port=8000)
+#if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
