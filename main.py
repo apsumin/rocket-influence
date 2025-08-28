@@ -184,7 +184,7 @@ HTML = """
                 // Get form data
                 const formData = new FormData(form);
                 const urlParams = new URLSearchParams(formData);
-                const url = `/api/v3/search/verify/?${urlParams.toString()}`;
+                const url = `/api/v3/search/verify?${urlParams.toString()}`;
 
                 fetch(url)
                 .then(response => response.text())
