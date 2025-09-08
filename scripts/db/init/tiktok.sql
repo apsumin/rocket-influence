@@ -1,0 +1,44 @@
+tiktok
+| column_name        | data_type                |
+| ------------------ | ------------------------ |
+| id                 | text                     |
+| text               | text                     |
+| text_language      | text                     |
+| create_time        | timestamp with time zone |
+| is_ad              | boolean                  |
+| author_id          | text                     |
+| author_name        | text                     |
+| author_nickname    | text                     |
+| author_profile_url | text                     |
+| author_signature   | text                     |
+| author_verified    | boolean                  |
+| author_region      | text                     |
+| author_following   | integer                  |
+| author_friends     | integer                  |
+| author_fans        | integer                  |
+| author_heart       | integer                  |
+| author_video_count | integer                  |
+| author_digg        | integer                  |
+| music_name         | text                     |
+| music_author       | text                     |
+| music_original     | boolean                  |
+| music_play_url     | text                     |
+| web_video_url      | text                     |
+| media_url          | text                     |
+| video_height       | integer                  |
+| video_width        | integer                  |
+| video_duration     | integer                  |
+| video_cover_url    | text                     |
+| digg_count         | integer                  |
+| share_count        | integer                  |
+| play_count         | integer                  |
+| collect_count      | integer                  |
+| comment_count      | integer                  |
+| hashtags           | ARRAY                    |
+| mentions           | ARRAY                    |
+| is_slideshow       | boolean                  |
+| is_pinned          | boolean                  |
+| is_sponsored       | boolean                  |
+| fetched_at         | timestamp with time zone |
+| webhook_id         | text                     |
+| Transcrib          | text                     |
