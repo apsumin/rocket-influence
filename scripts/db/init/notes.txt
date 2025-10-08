@@ -1,4 +1,0 @@
-
-09/04/2025
-
-rt_videotranscription_v2.sql - contains the latest SQL 
